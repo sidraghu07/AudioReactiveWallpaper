@@ -20,8 +20,8 @@ struct WallpaperUniforms {
     var puddleBassTime: Float
     var kickPulse: Float
     var puddleTrebleSmooth: Float
-    var _pad7: Float = 0
-    var _pad8: Float = 0
+    var puddleMidSmooth: Float
+    var spaceKickSmooth: Float
     var ripplePulses0: SIMD4<Float>
     var ripplePulses1: SIMD4<Float>
     var color0: SIMD4<Float>
@@ -48,6 +48,9 @@ final class WallpaperRenderer: NSObject, MTKViewDelegate {
 
     private var puddleMidSmooth: Float = 0
     private var puddleTrebleSmooth: Float = 0
+    private var puddleBeatSmooth: Float = 0
+    private var spaceKickSmooth: Float = 0
+    private var oceanVocalSmooth: Float = 0
 
     private var displayedColors = [SIMD3<Float>](repeating: SIMD3(0.1, 0.3, 0.6), count: paletteSlotCount)
     private var displayedColorCount: Float = 1
@@ -90,24 +93,29 @@ final class WallpaperRenderer: NSObject, MTKViewDelegate {
 
         let levels = AudioLevels.shared.getLevels()
         let midN = min(1, max(0, levels.mid / 40))
-        let bassN = min(1, max(0, levels.bass / 3000))
         let trebleN = min(1, max(0, levels.treble / 2))
 
-        let beatPulse = AudioLevels.shared.consumeBeatPulse(deltaTime: deltaTime)
+        let beatPulseRaw = AudioLevels.shared.consumeBeatPulse(deltaTime: deltaTime)
         let vocalActivity = AudioLevels.shared.getVocalActivity()
         let kickPulse = AudioLevels.shared.consumeKickPulse(deltaTime: deltaTime)
         let ripplePulses = AudioLevels.shared.consumeRipplePulses(deltaTime: deltaTime)
         let ripplePulses0 = SIMD4<Float>(ripplePulses[0], ripplePulses[1], ripplePulses[2], ripplePulses[3])
         let ripplePulses1 = SIMD4<Float>(ripplePulses[4], ripplePulses[5], ripplePulses[6], ripplePulses[7])
 
-        let midSmoothRate: Float = 1 - exp(-deltaTime / 0.5)
+        let midSmoothRate: Float = 1 - exp(-deltaTime / 0.85)
         puddleMidSmooth += (midN - puddleMidSmooth) * midSmoothRate
-        let trebleSmoothRate: Float = 1 - exp(-deltaTime / 0.6)
+        let trebleSmoothRate: Float = 1 - exp(-deltaTime / 0.95)
         puddleTrebleSmooth += (trebleN - puddleTrebleSmooth) * trebleSmoothRate
+        let beatSmoothRate: Float = 1 - exp(-deltaTime / 0.3)
+        puddleBeatSmooth += (beatPulseRaw - puddleBeatSmooth) * beatSmoothRate
+        let kickSmoothRate: Float = 1 - exp(-deltaTime / 0.2)
+        spaceKickSmooth += (kickPulse - spaceKickSmooth) * kickSmoothRate
+        let oceanVocalRate: Float = 1 - exp(-deltaTime / 0.5)
+        oceanVocalSmooth += (trebleN - oceanVocalSmooth) * oceanVocalRate
 
         puddleTime += deltaTime * (0.3 + puddleMidSmooth * 0.4)
         puddleBassTime += deltaTime * (0.15 + kickPulse * 0.6)
-        oceanTime += deltaTime * (0.25 + bassN * 0.3)
+        oceanTime += deltaTime * (0.2 + oceanVocalSmooth * 0.5 + kickPulse * 0.3)
         spaceTime += deltaTime * (0.02 + midN * 0.03)
 
         let palette = CoverColors.shared.getColors()
@@ -147,11 +155,13 @@ final class WallpaperRenderer: NSObject, MTKViewDelegate {
             puddleTime: puddleTime,
             oceanTime: oceanTime,
             spaceTime: spaceTime,
-            beatPulse: beatPulse,
+            beatPulse: puddleBeatSmooth,
             vocalActivity: vocalActivity,
             puddleBassTime: puddleBassTime,
             kickPulse: kickPulse,
             puddleTrebleSmooth: puddleTrebleSmooth,
+            puddleMidSmooth: puddleMidSmooth,
+            spaceKickSmooth: spaceKickSmooth,
             ripplePulses0: ripplePulses0,
             ripplePulses1: ripplePulses1,
             color0: paddedColors[0],
