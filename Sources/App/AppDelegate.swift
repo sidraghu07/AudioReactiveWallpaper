@@ -11,9 +11,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let metalDevice = MTLCreateSystemDefaultDevice()!
     private var nowPlaying: NowPlayingMonitor!
     private var controlsWindow: ControlsWindow!
+    private var captureRetryTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        if let iconURL = Bundle.module.url(forResource: "app", withExtension: "jpg"),
+        if let iconURL = ResourceLoader.url(forResource: "app", withExtension: "jpg"),
            let icon = NSImage(contentsOf: iconURL) {
             NSApplication.shared.applicationIconImage = icon
         }
@@ -36,6 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         capture = SystemAudioCapture(consumer: fft)
 
         startCaptureIfPossible()
+        startCaptureRetryTimer()
 
         NSWorkspace.shared.notificationCenter.addObserver(
             self,
@@ -48,11 +50,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         nowPlaying.onUpdate = { title, artist, artworkData in
             guard let artworkData else { return }
             DispatchQueue.global(qos: .userInitiated).async {
-                if let colors = AlbumColorExtractor.getColors(from: artworkData) {
-                    CoverColors.shared.update(colors: colors)
-                    print("Cover colors for \(title) by \(artist): \(colors)")
-                } else {
-                    print("Cover color extraction failed for \(title) by \(artist)")
+                let colors = AlbumColorExtractor.getColors(from: artworkData)
+                let artworkImage = NSImage(data: artworkData)
+                DispatchQueue.main.async {
+                    if let colors {
+                        CoverColors.shared.update(colors: colors)
+                        print("Cover colors for \(title) by \(artist): \(colors)")
+                    } else {
+                        print("Cover color extraction failed for \(title) by \(artist)")
+                    }
+                    NowPlayingDisplay.shared.update(title: title, artist: artist, artwork: artworkImage)
                 }
             }
         }
@@ -69,8 +76,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             do {
                 try await capture.start()
                 isCapturing = true
+                captureRetryTimer?.invalidate()
+                captureRetryTimer = nil
             } catch {
-                print("Audio capture not started yet: \(error)")
+                let nsError = error as NSError
+                let isPermissionDenied = nsError.domain == "com.apple.ScreenCaptureKit.SCStreamErrorDomain" && nsError.code == -3801
+                if isPermissionDenied {
+                    print("Screen Recording permission not granted. Grant it in System Settings > Privacy & Security > Screen Recording, then relaunch the app.")
+                    captureRetryTimer?.invalidate()
+                    captureRetryTimer = nil
+                } else {
+                    print("Audio capture not started yet: \(error)")
+                }
+            }
+        }
+    }
+    private func startCaptureRetryTimer() {
+        captureRetryTimer?.invalidate()
+        captureRetryTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                guard !self.isCapturing else {
+                    self.captureRetryTimer?.invalidate()
+                    self.captureRetryTimer = nil
+                    return
+                }
+                self.startCaptureIfPossible()
             }
         }
     }
@@ -107,6 +138,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let renderer = WallpaperRenderer(device: metalDevice)
         metalView.delegate = renderer
         renderers.append(renderer)
+
+        let nowPlayingWidget = NowPlayingWidgetView()
+        nowPlayingWidget.frame.origin = CGPoint(x: 24, y: 24)
+        nowPlayingWidget.autoresizingMask = [.maxXMargin, .maxYMargin]
+        metalView.addSubview(nowPlayingWidget)
 
         window.contentView = metalView
         window.makeKeyAndOrderFront(nil)

@@ -14,13 +14,11 @@ swift build -c "$BUILD_CONFIG" --package-path "$SCRIPT_DIR"
 echo "Assembling $APP_NAME.app..."
 rm -rf "$APP_BUNDLE"
 mkdir -p "$APP_BUNDLE/Contents/MacOS"
+mkdir -p "$APP_BUNDLE/Contents/Resources"
 
 cp "$BUILD_DIR/$APP_NAME" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 
-# Bundle.module resolves resources relative to Bundle.main.bundleURL, which for
-# an .app is the .app directory itself - so the resource bundle needs to sit
-# at the top level of the .app, not inside Contents/Resources/.
-cp -R "$BUILD_DIR/${APP_NAME}_${APP_NAME}.bundle" "$APP_BUNDLE/"
+cp "$BUILD_DIR/${APP_NAME}_${APP_NAME}.bundle/"* "$APP_BUNDLE/Contents/Resources/"
 
 cat > "$APP_BUNDLE/Contents/Info.plist" << PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -44,6 +42,21 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << PLIST
 </dict>
 </plist>
 PLIST
+
+echo "Code signing (stable local identity)..."
+signed=0
+for attempt in 1 2 3 4 5; do
+    xattr -cr "$APP_BUNDLE"
+    if codesign --force --sign "AudioReactiveWallpaperCert" "$APP_BUNDLE"; then
+        signed=1
+        break
+    fi
+    sleep 1
+done
+if [ "$signed" -ne 1 ]; then
+    echo "Code signing failed after retries." >&2
+    exit 1
+fi
 
 echo "Done: $APP_BUNDLE"
 echo "Run with: open \"$APP_BUNDLE\""

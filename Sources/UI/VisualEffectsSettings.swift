@@ -2,6 +2,7 @@ import Foundation
 
 final class VisualEffectsSettings: @unchecked Sendable {
     static let shared = VisualEffectsSettings()
+    static let showNowPlayingWidgetChanged = Notification.Name("VisualEffectsSettings.showNowPlayingWidgetChanged")
 
     private let lock = NSLock()
     private var _kaleidoscope = false
@@ -9,6 +10,7 @@ final class VisualEffectsSettings: @unchecked Sendable {
     private var _chromaticAberration = false
     private var _hueCycling = false
     private var _atmosphereMode = 0
+    private var _showNowPlayingWidget = true
 
     private init() {}
 
@@ -35,5 +37,13 @@ final class VisualEffectsSettings: @unchecked Sendable {
     var hueCycling: Bool {
         get { lock.lock(); defer { lock.unlock() }; return _hueCycling }
         set { lock.lock(); _hueCycling = newValue; lock.unlock() }
+    }
+
+    var showNowPlayingWidget: Bool {
+        get { lock.lock(); defer { lock.unlock() }; return _showNowPlayingWidget }
+        set {
+            lock.lock(); _showNowPlayingWidget = newValue; lock.unlock()
+            NotificationCenter.default.post(name: Self.showNowPlayingWidgetChanged, object: nil)
+        }
     }
 }

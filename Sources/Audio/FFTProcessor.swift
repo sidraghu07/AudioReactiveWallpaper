@@ -97,10 +97,9 @@ final class FFTProcessor: AudioSampleConsumer {
             let slice = magnitudes[lowBin..<highBin]
             return slice.reduce(0, +) / Float(slice.count)
         }
-
         let bass = averageEnergy(fromHz: 20, toHz: 250)
-        let mid = averageEnergy(fromHz: 250, toHz: 4000)
-        let treble = averageEnergy(fromHz: 4000, toHz: 16000)
+        let mid = averageEnergy(fromHz: 250, toHz: 2000)
+        let treble = averageEnergy(fromHz: 2000, toHz: 6000)
 
         energyOnCalculated?(bass, mid, treble)
     }

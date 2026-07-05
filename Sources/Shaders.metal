@@ -31,6 +31,14 @@ struct Uniforms {
     float atmosphereMode;
     float puddleTime;
     float oceanTime;
+    float spaceTime;
+    float beatPulse;
+    float vocalActivity;
+    float puddleBassTime;
+    float kickPulse;
+    float puddleTrebleSmooth;
+    float _pad7;
+    float _pad8;
     float4 color0;
     float4 color1;
     float4 color2;
@@ -54,15 +62,22 @@ float3 paletteGradient(float t, constant Uniforms &u) {
     return mix(colors[index], colors[min(index + 1, count - 1)], f);
 }
 
-float puddleHeight(float2 p, float t, float bassN, float trebleN) {
-    float turbulence = 0.5 + bassN * 1.5;
-
+float puddleHeight(float2 p, float t, float bassT, float kickPulse, float trebleN, float beatPulse) {
     float h = 0.0;
     h += sin(p.x * 3.0 + t * 1.1) * 0.5;
     h += sin(p.y * 2.6 - t * 0.9) * 0.5;
     h += sin((p.x + p.y) * 2.0 + t * 1.4) * 0.4;
-    h += sin(length(p) * 4.0 - t * 1.8) * 0.4 * turbulence;
-    h += sin(p.x * 6.0 - p.y * 5.0 + t * 2.2) * 0.15 * (0.5 + trebleN);
+
+    h += sin(length(p) * 1.6 - bassT * 1.2) * (0.15 + kickPulse * 1.1);
+
+    h += sin(p.x * 6.0 - p.y * 5.0 + t * 2.2) * 0.22 * (0.4 + trebleN * 1.4);
+
+    float beatAge = 1.0 - beatPulse;
+    float ringRadius = beatAge * 2.4;
+    float dist = length(p);
+    float wave = sin((dist - ringRadius) * 16.0) * exp(-abs(dist - ringRadius) * 5.0);
+    h += wave * beatPulse * 0.4;
+
     return h;
 }
 
@@ -74,8 +89,8 @@ float oceanHeight(float2 p, float t, float midN, float trebleN) {
     float h = 0.0;
     h += sin(dot(p, dir1) * 2.0 + t * 1.0) * 0.35;
     h += sin(dot(p, dir2) * 3.3 - t * 1.4) * 0.25;
-    h += sin(dot(p, dir3) * 5.1 + t * 2.0) * 0.15 * (0.5 + midN);
-    h += sin(dot(p, dir1) * 8.0 - t * 2.6 + dot(p, dir3) * 2.0) * 0.08 * (0.4 + trebleN);
+    h += sin(dot(p, dir3) * 5.1 + t * 2.0) * 0.15 * (0.3 + midN * 1.5);
+    h += sin(dot(p, dir1) * 8.0 - t * 2.6 + dot(p, dir3) * 2.0) * 0.08 * (0.3 + trebleN * 1.4);
     return h;
 }
 
@@ -85,7 +100,7 @@ float hash21(float2 p) {
     return fract(p.x * p.y);
 }
 
-float starField(float2 p, float density, float time, float trebleN) {
+float starField(float2 p, float density, float time) {
     float2 gridPos = p * density;
     float2 cell = floor(gridPos);
     float2 cellUV = fract(gridPos);
@@ -97,9 +112,30 @@ float starField(float2 p, float density, float time, float trebleN) {
     float exists = step(0.72, hash21(cell + float2(5.0, 5.0)));
 
     float twinkle = sin(time * (2.0 + starSeed * 4.0) + starSeed * 20.0) * 0.5 + 0.5;
-    twinkle = mix(0.3, 1.0, twinkle) * (0.6 + trebleN * 1.2);
+    twinkle = mix(0.3, 1.0, twinkle) * 0.7;
 
     float starSize = 0.015 + starSeed * 0.025;
+    float brightness = smoothstep(starSize, 0.0, dist) * twinkle * exists;
+
+    return brightness;
+}
+
+float vocalSparkleField(float2 p, float density, float time, float activity) {
+    float2 gridPos = p * density;
+    float2 cell = floor(gridPos);
+    float2 cellUV = fract(gridPos);
+
+    float2 starPos = float2(hash21(cell), hash21(cell + float2(17.0, 31.0)));
+    float dist = length(cellUV - starPos);
+
+    float starSeed = hash21(cell + float2(99.0, 7.0));
+    float existsThreshold = mix(0.88, 0.42, activity);
+    float exists = step(existsThreshold, hash21(cell + float2(5.0, 5.0)));
+
+    float twinkle = sin(time * (2.0 + starSeed * 4.0) + starSeed * 20.0) * 0.5 + 0.5;
+    twinkle = mix(0.4, 1.0, twinkle);
+
+    float starSize = 0.018 + starSeed * 0.03;
     float brightness = smoothstep(starSize, 0.0, dist) * twinkle * exists;
 
     return brightness;
@@ -122,6 +158,12 @@ fragment float4 fragmentMain(VertexOut in [[stage_in]],
     float midN = clamp(u.mid / 40.0, 0.0, 1.0);
     float trebleN = clamp(u.treble / 2.0, 0.0, 1.0);
 
+    float totalEnergy = bassN + midN + trebleN;
+    float energyCompression = mix(1.0, 0.55, smoothstep(1.2, 2.6, totalEnergy));
+    bassN *= energyCompression;
+    midN *= energyCompression;
+    trebleN *= energyCompression;
+
     float2 kUV;
     if (u.kaleidoscopeEnabled > 0.5) {
         float2 center = float2(0.5, 0.5);
@@ -143,9 +185,6 @@ fragment float4 fragmentMain(VertexOut in [[stage_in]],
 
     float hueShift = (u.hueCyclingEnabled > 0.5) ? (u.time * 0.05) : 0.0;
 
-    // Background wash stays locked to the actual album palette regardless of
-    // hue-cycling - only the reactive content (waveform/puddle/nebula/ocean)
-    // drifts in hue, so the ambient backdrop doesn't rainbow-cycle.
     float gradientT = fract(clamp(kUV.y, 0.0, 1.0));
     float3 color = paletteGradient(gradientT, u) * 0.24;
 
@@ -156,22 +195,20 @@ fragment float4 fragmentMain(VertexOut in [[stage_in]],
     color += paletteGradient(fract(driftT + 0.3), u) * 0.1;
 
     if (u.atmosphereMode < 0.5) {
-        // --- Waveform atmosphere: the real audio trace, optionally trailing
-        // --- into echo copies, each with optional chromatic aberration. ---
         const int echoCount = (u.echoTrailsEnabled > 0.5) ? 5 : 1;
         for (int e = 0; e < echoCount; e++) {
             float echoT = float(e) / float(echoCount);
             float phaseOffset = (u.echoTrailsEnabled > 0.5) ? echoT * 0.06 : 0.0;
             float baselineOffset = (u.echoTrailsEnabled > 0.5) ? (echoT - 0.5) * 0.15 : 0.0;
 
-            float gain = 2.5 + bassN * 2.0;
-            float caOffset = (u.chromaticAberrationEnabled > 0.5) ? (0.004 + trebleN * 0.004) : 0.0;
+            float gain = 2.5 + bassN * 3.0;
+            float caOffset = (u.chromaticAberrationEnabled > 0.5) ? (0.004 + trebleN * 0.008) : 0.0;
 
             float ampR = sampleWaveform(waveform, fract(kUV.x + phaseOffset + caOffset)) * gain;
             float ampG = sampleWaveform(waveform, fract(kUV.x + phaseOffset)) * gain;
             float ampB = sampleWaveform(waveform, fract(kUV.x + phaseOffset - caOffset)) * gain;
 
-            float thickness = 0.008 + trebleN * 0.006;
+            float thickness = 0.006 + trebleN * 0.010;
 
             float distR = abs(p.y - (ampR + baselineOffset));
             float distG = abs(p.y - (ampG + baselineOffset));
@@ -182,9 +219,9 @@ fragment float4 fragmentMain(VertexOut in [[stage_in]],
             float glowB = exp(-distB * distB / (thickness * thickness * 6.0));
 
             float echoHueOffset = (u.echoTrailsEnabled > 0.5) ? echoT * 0.5 : 0.0;
-            float3 echoColor = paletteGradient(fract(0.15 + midN * 0.5 + echoHueOffset + hueShift), u);
+            float3 echoColor = paletteGradient(fract(0.15 + midN * 0.7 + echoHueOffset + hueShift), u);
             float echoFade = 1.0 - echoT * 0.7;
-            float intensity = echoFade * (0.8 + bassN * 0.6);
+            float intensity = echoFade * (0.8 + bassN * 0.6 + trebleN * 0.4);
 
             color.r += echoColor.r * glowR * intensity;
             color.g += echoColor.g * glowG * intensity;
@@ -199,13 +236,10 @@ fragment float4 fragmentMain(VertexOut in [[stage_in]],
             color.b += echoColor.b * haloB * echoFade * 0.25;
         }
     } else if (u.atmosphereMode < 1.5) {
-        // --- Puddle atmosphere: a rippling reflective surface, built from a
-        // --- height field whose numerical gradient stands in for a surface
-        // --- normal, driving water-like specular highlights. ---
         float eps = 0.01;
-        float h = puddleHeight(p, u.puddleTime, bassN, trebleN);
-        float hx = puddleHeight(p + float2(eps, 0.0), u.puddleTime, bassN, trebleN);
-        float hy = puddleHeight(p + float2(0.0, eps), u.puddleTime, bassN, trebleN);
+        float h = puddleHeight(p, u.puddleTime, u.puddleBassTime, u.kickPulse, u.puddleTrebleSmooth, u.beatPulse);
+        float hx = puddleHeight(p + float2(eps, 0.0), u.puddleTime, u.puddleBassTime, u.kickPulse, u.puddleTrebleSmooth, u.beatPulse);
+        float hy = puddleHeight(p + float2(0.0, eps), u.puddleTime, u.puddleBassTime, u.kickPulse, u.puddleTrebleSmooth, u.beatPulse);
 
         float2 normal = float2((h - hx) / eps, (h - hy) / eps);
         float2 lightDir = normalize(float2(0.4, 0.6));
@@ -214,24 +248,25 @@ fragment float4 fragmentMain(VertexOut in [[stage_in]],
         float3 puddleColor = paletteGradient(fract(h * 0.15 + 0.5 + hueShift), u);
 
         color += puddleColor * (0.5 + 0.3 * (h * 0.5 + 0.5));
-        color += float3(1.0) * highlight * (0.3 + trebleN * 0.4) * puddleColor;
+        color += float3(1.0) * highlight * (0.3 + u.puddleTrebleSmooth * 1.2) * puddleColor;
+
+        color += puddleColor * u.beatPulse * 0.12;
     } else if (u.atmosphereMode < 2.5) {
-        // --- Space atmosphere: drifting nebula clouds under a twinkling
-        // --- procedural starfield (hashed grid cells, no textures needed). ---
         float nebula1 = sin(p.x * 1.2 + u.time * 0.04) * cos(p.y * 1.0 - u.time * 0.03) * 0.5 + 0.5;
-        float nebula2 = sin((p.x + p.y) * 0.8 - u.time * (0.02 + midN * 0.03)) * 0.5 + 0.5;
+        float nebula2 = sin((p.x + p.y) * 0.8 - u.spaceTime) * 0.5 + 0.5;
         float3 nebulaColor = paletteGradient(fract(nebula1 * 0.5 + nebula2 * 0.5 + hueShift), u);
-        color += nebulaColor * (0.18 + midN * 0.18) * (0.5 + nebula1 * 0.5);
 
-        float stars = starField(p, 24.0, u.time, trebleN);
-        stars += starField(p * 1.6 + float2(37.0, 91.0), 24.0, u.time * 1.4, trebleN) * 0.7;
-        stars += starField(p * 2.3 + float2(11.0, 63.0), 24.0, u.time * 0.8, trebleN) * 0.5;
+        color += nebulaColor * (0.12 + bassN * 0.4) * (0.5 + nebula1 * 0.5);
 
-        color += float3(1.0) * stars * (0.7 + bassN * 0.6);
+        float stars = starField(p, 24.0, u.time);
+        stars += starField(p * 1.6 + float2(37.0, 91.0), 24.0, u.time * 1.4) * 0.7;
+        stars += starField(p * 2.3 + float2(11.0, 63.0), 24.0, u.time * 0.8) * 0.5;
+        color += float3(1.0) * stars * 0.55;
+
+        float vocalSparkle = vocalSparkleField(p * 4.0 + float2(53.0, 17.0), 24.0, u.time * 2.2, trebleN);
+        vocalSparkle += vocalSparkleField(p * 5.5 + float2(19.0, 83.0), 24.0, u.time * 2.8, trebleN) * 0.8;
+        color += float3(1.0) * vocalSparkle * trebleN * 3.2;
     } else {
-        // --- Ocean atmosphere: rolling horizontal swells with foam at steep
-        // --- crests, colored deep-to-shallow rather than the mirror-like
-        // --- specular glint used by Puddle mode. ---
         float eps = 0.01;
         float h = oceanHeight(p, u.oceanTime, midN, trebleN);
         float hx = oceanHeight(p + float2(eps, 0.0), u.oceanTime, midN, trebleN);
@@ -239,21 +274,15 @@ fragment float4 fragmentMain(VertexOut in [[stage_in]],
         float2 grad = float2((h - hx) / eps, (h - hy) / eps);
         float slope = length(grad);
 
-        // Only the tips of actual wave peaks (high AND steep), not just any
-        // moderately-sloped point - otherwise foam covers broad bands instead
-        // of localized crests.
         float crestMask = smoothstep(0.35, 0.65, h) * smoothstep(0.9, 1.6, slope);
 
-        // A sum of differently-angled sine waves, not a product of two
-        // perpendicular ones - a product creates a regular polka-dot grid,
-        // this gives an irregular organic texture instead.
         float sparkle = sin(p.x * 140.0 + p.y * 90.0 + u.time * 3.0)
                        + sin(p.x * -110.0 + p.y * 130.0 - u.time * 2.4)
                        + sin(p.x * 95.0 - p.y * 150.0 + u.time * 3.7);
         sparkle = sparkle / 3.0 * 0.5 + 0.5;
         sparkle = smoothstep(0.55, 0.85, sparkle);
 
-        float foam = crestMask * sparkle * (0.6 + trebleN * 0.8);
+        float foam = crestMask * sparkle * (0.4 + trebleN * 1.4);
 
         float depthT = fract(clamp(kUV.y + h * 0.1, 0.0, 1.0) + hueShift);
         float3 oceanColor = paletteGradient(depthT, u);
@@ -261,6 +290,9 @@ fragment float4 fragmentMain(VertexOut in [[stage_in]],
         color += oceanColor * (0.4 + 0.3 * (h * 0.5 + 0.5));
         color += float3(1.0) * foam * 0.8;
     }
+
+    float peak = max(color.r, max(color.g, color.b));
+    color = color / (1.0 + peak * 0.4);
 
     return float4(color, 1.0);
 }

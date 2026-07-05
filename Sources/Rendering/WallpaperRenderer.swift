@@ -14,6 +14,14 @@ struct WallpaperUniforms {
     var atmosphereMode: Float
     var puddleTime: Float
     var oceanTime: Float
+    var spaceTime: Float
+    var beatPulse: Float
+    var vocalActivity: Float
+    var puddleBassTime: Float
+    var kickPulse: Float
+    var puddleTrebleSmooth: Float
+    var _pad7: Float = 0
+    var _pad8: Float = 0
     var color0: SIMD4<Float>
     var color1: SIMD4<Float>
     var color2: SIMD4<Float>
@@ -31,15 +39,24 @@ final class WallpaperRenderer: NSObject, MTKViewDelegate {
     private let pipelineState: MTLRenderPipelineState
     private let startTime = CACurrentMediaTime()
     private var puddleTime: Float = 0
+    private var puddleBassTime: Float = 0
     private var oceanTime: Float = 0
+    private var spaceTime: Float = 0
     private var lastFrameTimestamp = CACurrentMediaTime()
+
+    private var puddleMidSmooth: Float = 0
+    private var puddleTrebleSmooth: Float = 0
+
+    private var displayedColors = [SIMD3<Float>](repeating: SIMD3(0.1, 0.3, 0.6), count: paletteSlotCount)
+    private var displayedColorCount: Float = 1
+    private var hasInitializedColors = false
 
     init(device: MTLDevice) {
         self.commandQueue = device.makeCommandQueue()!
 
-        guard let shaderURL = Bundle.module.url(forResource: "Shaders", withExtension: "metal"),
+        guard let shaderURL = ResourceLoader.url(forResource: "Shaders", withExtension: "metal"),
               let shaderSource = try? String(contentsOf: shaderURL, encoding: .utf8) else {
-            fatalError("Could not locate Shaders.metal in the resource bundle")
+            fatalError("Could not locate Shaders.metal")
         }
 
         guard let library = try? device.makeLibrary(source: shaderSource, options: nil),
@@ -72,14 +89,42 @@ final class WallpaperRenderer: NSObject, MTKViewDelegate {
         let levels = AudioLevels.shared.getLevels()
         let midN = min(1, max(0, levels.mid / 40))
         let bassN = min(1, max(0, levels.bass / 3000))
-        puddleTime += deltaTime * (0.3 + midN * 0.4)
+        let trebleN = min(1, max(0, levels.treble / 2))
+
+        let beatPulse = AudioLevels.shared.consumeBeatPulse(deltaTime: deltaTime)
+        let vocalActivity = AudioLevels.shared.getVocalActivity()
+        let kickPulse = AudioLevels.shared.consumeKickPulse(deltaTime: deltaTime)
+
+        let midSmoothRate: Float = 1 - exp(-deltaTime / 0.5)
+        puddleMidSmooth += (midN - puddleMidSmooth) * midSmoothRate
+        let trebleSmoothRate: Float = 1 - exp(-deltaTime / 0.6)
+        puddleTrebleSmooth += (trebleN - puddleTrebleSmooth) * trebleSmoothRate
+
+        puddleTime += deltaTime * (0.3 + puddleMidSmooth * 0.4)
+        puddleBassTime += deltaTime * (0.15 + kickPulse * 0.6)
         oceanTime += deltaTime * (0.25 + bassN * 0.3)
+        spaceTime += deltaTime * (0.02 + midN * 0.03)
 
         let palette = CoverColors.shared.getColors()
-        let paddedColors = (0..<paletteSlotCount).map { i -> SIMD4<Float> in
-            guard i < palette.count else { return SIMD4<Float>(palette.first ?? SIMD3(0.1, 0.3, 0.6), 1) }
-            return SIMD4<Float>(palette[i], 1)
+        let targetColors = (0..<paletteSlotCount).map { i -> SIMD3<Float> in
+            guard i < palette.count else { return palette.first ?? SIMD3(0.1, 0.3, 0.6) }
+            return palette[i]
         }
+        let targetColorCount = Float(max(1, min(palette.count, paletteSlotCount)))
+
+        if !hasInitializedColors {
+            displayedColors = targetColors
+            displayedColorCount = targetColorCount
+            hasInitializedColors = true
+        }
+
+        let colorLerpRate: Float = 1 - exp(-deltaTime / 1.2)
+        for i in 0..<paletteSlotCount {
+            displayedColors[i] += (targetColors[i] - displayedColors[i]) * colorLerpRate
+        }
+        displayedColorCount += (targetColorCount - displayedColorCount) * colorLerpRate
+
+        let paddedColors = displayedColors.map { SIMD4<Float>($0, 1) }
 
         let settings = VisualEffectsSettings.shared
 
@@ -88,7 +133,7 @@ final class WallpaperRenderer: NSObject, MTKViewDelegate {
             bass: levels.bass,
             mid: levels.mid,
             treble: levels.treble,
-            colorCount: Float(max(1, min(palette.count, paletteSlotCount))),
+            colorCount: displayedColorCount,
             kaleidoscopeEnabled: settings.kaleidoscope ? 1 : 0,
             echoTrailsEnabled: settings.echoTrails ? 1 : 0,
             chromaticAberrationEnabled: settings.chromaticAberration ? 1 : 0,
@@ -96,6 +141,12 @@ final class WallpaperRenderer: NSObject, MTKViewDelegate {
             atmosphereMode: Float(settings.atmosphereMode),
             puddleTime: puddleTime,
             oceanTime: oceanTime,
+            spaceTime: spaceTime,
+            beatPulse: beatPulse,
+            vocalActivity: vocalActivity,
+            puddleBassTime: puddleBassTime,
+            kickPulse: kickPulse,
+            puddleTrebleSmooth: puddleTrebleSmooth,
             color0: paddedColors[0],
             color1: paddedColors[1],
             color2: paddedColors[2],

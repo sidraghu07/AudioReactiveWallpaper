@@ -23,20 +23,11 @@ enum AlbumColorExtractor {
             return nil
         }
 
-        // Explicit high-quality interpolation so a detailed, busy cover gets a
-        // true area-weighted downsample instead of a cheap approximation that
-        // can wash out saturated regions into duller averages.
         context.interpolationQuality = .high
         context.draw(image, in: CGRect(x: 0, y: 0, width: size, height: size))
         guard let pixelData = context.data else { return nil }
         let pixels = pixelData.bindMemory(to: UInt8.self, capacity: size * size * 4)
 
-        // Build a histogram from every pixel, unfiltered - matches how Apple
-        // Music's own extraction (based on the classic "ColorArt" algorithm)
-        // finds its background color first: album backgrounds are frequently
-        // dark, muted, or near-black, so filtering by saturation/brightness
-        // up front (like earlier versions of this code did) biases away from
-        // ever finding the real background at all.
         var buckets: [Int: (count: Int, r: Int, g: Int, b: Int)] = [:]
         let quantizeStep = 24
 
@@ -57,13 +48,6 @@ enum AlbumColorExtractor {
 
         let byFrequency = buckets.values.sorted { $0.count > $1.count }
 
-        // Find the background from a coarser re-bucketing pass, not the fine
-        // histogram above. A region with natural shading/gradient variation
-        // (e.g. varied reds across a photo) gets its pixel mass fragmented
-        // across many nearby fine buckets, so even a small but perfectly
-        // uniform region (e.g. solid black text) can out-count any single
-        // one of them despite covering far less of the actual image. Coarser
-        // buckets merge similar shades together so total area wins properly.
         var coarseBuckets: [Int: (count: Int, r: Int, g: Int, b: Int)] = [:]
         let coarseStep = 48
         for i in 0..<(size * size) {
@@ -84,12 +68,6 @@ enum AlbumColorExtractor {
         let background = SIMD3<Float>(Float(backgroundBucket.r), Float(backgroundBucket.g), Float(backgroundBucket.b))
             / Float(backgroundBucket.count) / 255
 
-        // Accent colors: rank the rest by count, but boost genuinely
-        // saturated buckets - otherwise a small real accent (e.g. a splash of
-        // orange on an otherwise gray/black cover) gets crowded out of the
-        // top slots by sheer pixel count from the dominant neutral tones.
-        // This mirrors ColorArt's "find primary/secondary/detail colors that
-        // contrast with the background" step.
         let accentCandidates = byFrequency.sorted { a, b in
             let colorA = SIMD3<Float>(Float(a.r), Float(a.g), Float(a.b)) / Float(a.count) / 255
             let colorB = SIMD3<Float>(Float(b.r), Float(b.g), Float(b.b)) / Float(b.count) / 255
@@ -110,21 +88,13 @@ enum AlbumColorExtractor {
                 break
             }
         }
-
-        // Treat as effectively grayscale only if NOTHING in the palette is
-        // genuinely saturated. Hue clustering alone isn't a useful signal -
-        // most real album art has a cohesive color scheme (e.g. a bouquet of
-        // reds and golds), which clusters hues together just as much as an
-        // actual sepia-tinted black-and-white photo does. The one thing that
-        // actually distinguishes them is whether any color is truly vivid.
+        
         let maxSaturation = picked.map { rgbToHSV($0).s }.max() ?? 0
         let isEffectivelyGrayscale = picked.isEmpty || maxSaturation < 0.3
         if isEffectivelyGrayscale {
             picked = extractGrayscalePalette(pixels: pixels, pixelCount: size * size, maxColors: maxColors)
             guard !picked.isEmpty else { return nil }
 
-            // Pad with more shades of gray - a black-and-white cover should
-            // only ever produce black/white/gray, never an invented hue.
             while picked.count < 2 {
                 let v = picked[0].x
                 let shifted = max(0, min(1, v > 0.5 ? v - 0.3 : v + 0.3))

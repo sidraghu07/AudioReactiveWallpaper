@@ -24,7 +24,7 @@ final class ControlsWindow: NSObject {
 
     override init() {
         window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 280, height: 420),
+            contentRect: NSRect(x: 0, y: 0, width: 280, height: 480),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -74,7 +74,17 @@ final class ControlsWindow: NSObject {
         effectsStack.alignment = .leading
         effectsStack.spacing = 6
 
-        let outerStack = NSStackView(views: [atmosphereLabel, atmosphereStack, effectsLabel, effectsStack])
+        let widgetLabel = NSTextField(labelWithString: "Widget")
+        widgetLabel.font = .boldSystemFont(ofSize: 12)
+
+        let nowPlayingCheckbox = NSButton(
+            checkboxWithTitle: "Show Now Playing",
+            target: self,
+            action: #selector(nowPlayingToggled(_:))
+        )
+        nowPlayingCheckbox.state = VisualEffectsSettings.shared.showNowPlayingWidget ? .on : .off
+
+        let outerStack = NSStackView(views: [atmosphereLabel, atmosphereStack, effectsLabel, effectsStack, widgetLabel, nowPlayingCheckbox])
         outerStack.orientation = .vertical
         outerStack.alignment = .leading
         outerStack.spacing = 14
@@ -114,5 +124,9 @@ final class ControlsWindow: NSObject {
             customWindow = CustomEffectsWindow()
         }
         customWindow?.show()
+    }
+
+    @objc private func nowPlayingToggled(_ sender: NSButton) {
+        VisualEffectsSettings.shared.showNowPlayingWidget = sender.state == .on
     }
 }
