@@ -22,6 +22,8 @@ struct WallpaperUniforms {
     var puddleTrebleSmooth: Float
     var _pad7: Float = 0
     var _pad8: Float = 0
+    var ripplePulses0: SIMD4<Float>
+    var ripplePulses1: SIMD4<Float>
     var color0: SIMD4<Float>
     var color1: SIMD4<Float>
     var color2: SIMD4<Float>
@@ -94,6 +96,9 @@ final class WallpaperRenderer: NSObject, MTKViewDelegate {
         let beatPulse = AudioLevels.shared.consumeBeatPulse(deltaTime: deltaTime)
         let vocalActivity = AudioLevels.shared.getVocalActivity()
         let kickPulse = AudioLevels.shared.consumeKickPulse(deltaTime: deltaTime)
+        let ripplePulses = AudioLevels.shared.consumeRipplePulses(deltaTime: deltaTime)
+        let ripplePulses0 = SIMD4<Float>(ripplePulses[0], ripplePulses[1], ripplePulses[2], ripplePulses[3])
+        let ripplePulses1 = SIMD4<Float>(ripplePulses[4], ripplePulses[5], ripplePulses[6], ripplePulses[7])
 
         let midSmoothRate: Float = 1 - exp(-deltaTime / 0.5)
         puddleMidSmooth += (midN - puddleMidSmooth) * midSmoothRate
@@ -147,6 +152,8 @@ final class WallpaperRenderer: NSObject, MTKViewDelegate {
             puddleBassTime: puddleBassTime,
             kickPulse: kickPulse,
             puddleTrebleSmooth: puddleTrebleSmooth,
+            ripplePulses0: ripplePulses0,
+            ripplePulses1: ripplePulses1,
             color0: paddedColors[0],
             color1: paddedColors[1],
             color2: paddedColors[2],

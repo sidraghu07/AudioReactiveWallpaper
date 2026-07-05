@@ -15,6 +15,9 @@ final class AudioLevels: @unchecked Sendable {
     private var beatPulseValue: Float = 0
     private var lastBeatTime: CFTimeInterval = 0
 
+    static let ripplePoolSize = 8
+    private var ripplePulses = [Float](repeating: 0, count: AudioLevels.ripplePoolSize)
+
     private var kickPulseValue: Float = 0
     private var lastKickTime: CFTimeInterval = 0
     private var lastUpdateTime: CFTimeInterval = CACurrentMediaTime()
@@ -40,6 +43,9 @@ final class AudioLevels: @unchecked Sendable {
         if (bassOnset || midOnset || trebleOnset) && (now - lastBeatTime) > 0.45 {
             beatPulseValue = 1.0
             lastBeatTime = now
+            if let freeSlot = ripplePulses.firstIndex(where: { $0 <= 0 }) {
+                ripplePulses[freeSlot] = 1.0
+            }
         }
         if bassOnset && (now - lastKickTime) > 0.15 {
             kickPulseValue = 1.0
@@ -75,6 +81,16 @@ final class AudioLevels: @unchecked Sendable {
         let value = beatPulseValue
         beatPulseValue = max(0, beatPulseValue - deltaTime * 0.15)
         return value
+    }
+
+    func consumeRipplePulses(deltaTime: Float) -> [Float] {
+        lock.lock()
+        defer { lock.unlock() }
+        let values = ripplePulses
+        for i in 0..<ripplePulses.count {
+            ripplePulses[i] = max(0, ripplePulses[i] - deltaTime * 0.15)
+        }
+        return values
     }
 
     func consumeKickPulse(deltaTime: Float) -> Float {

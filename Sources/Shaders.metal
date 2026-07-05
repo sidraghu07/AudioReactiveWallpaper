@@ -39,6 +39,8 @@ struct Uniforms {
     float puddleTrebleSmooth;
     float _pad7;
     float _pad8;
+    float4 ripplePulses0;
+    float4 ripplePulses1;
     float4 color0;
     float4 color1;
     float4 color2;
@@ -62,7 +64,15 @@ float3 paletteGradient(float t, constant Uniforms &u) {
     return mix(colors[index], colors[min(index + 1, count - 1)], f);
 }
 
-float puddleHeight(float2 p, float t, float bassT, float kickPulse, float trebleN, float beatPulse) {
+float rippleWave(float2 p, float pulse) {
+    float age = 1.0 - pulse;
+    float ringRadius = age * 2.4;
+    float dist = length(p);
+    float wave = sin((dist - ringRadius) * 16.0) * exp(-abs(dist - ringRadius) * 5.0);
+    return wave * pulse;
+}
+
+float puddleHeight(float2 p, float t, float bassT, float kickPulse, float trebleN, float4 ripplePulses0, float4 ripplePulses1) {
     float h = 0.0;
     h += sin(p.x * 3.0 + t * 1.1) * 0.5;
     h += sin(p.y * 2.6 - t * 0.9) * 0.5;
@@ -72,11 +82,14 @@ float puddleHeight(float2 p, float t, float bassT, float kickPulse, float treble
 
     h += sin(p.x * 6.0 - p.y * 5.0 + t * 2.2) * 0.22 * (0.4 + trebleN * 1.4);
 
-    float beatAge = 1.0 - beatPulse;
-    float ringRadius = beatAge * 2.4;
-    float dist = length(p);
-    float wave = sin((dist - ringRadius) * 16.0) * exp(-abs(dist - ringRadius) * 5.0);
-    h += wave * beatPulse * 0.4;
+    h += rippleWave(p, ripplePulses0.x) * 0.4;
+    h += rippleWave(p, ripplePulses0.y) * 0.4;
+    h += rippleWave(p, ripplePulses0.z) * 0.4;
+    h += rippleWave(p, ripplePulses0.w) * 0.4;
+    h += rippleWave(p, ripplePulses1.x) * 0.4;
+    h += rippleWave(p, ripplePulses1.y) * 0.4;
+    h += rippleWave(p, ripplePulses1.z) * 0.4;
+    h += rippleWave(p, ripplePulses1.w) * 0.4;
 
     return h;
 }
@@ -237,9 +250,9 @@ fragment float4 fragmentMain(VertexOut in [[stage_in]],
         }
     } else if (u.atmosphereMode < 1.5) {
         float eps = 0.01;
-        float h = puddleHeight(p, u.puddleTime, u.puddleBassTime, u.kickPulse, u.puddleTrebleSmooth, u.beatPulse);
-        float hx = puddleHeight(p + float2(eps, 0.0), u.puddleTime, u.puddleBassTime, u.kickPulse, u.puddleTrebleSmooth, u.beatPulse);
-        float hy = puddleHeight(p + float2(0.0, eps), u.puddleTime, u.puddleBassTime, u.kickPulse, u.puddleTrebleSmooth, u.beatPulse);
+        float h = puddleHeight(p, u.puddleTime, u.puddleBassTime, u.kickPulse, u.puddleTrebleSmooth, u.ripplePulses0, u.ripplePulses1);
+        float hx = puddleHeight(p + float2(eps, 0.0), u.puddleTime, u.puddleBassTime, u.kickPulse, u.puddleTrebleSmooth, u.ripplePulses0, u.ripplePulses1);
+        float hy = puddleHeight(p + float2(0.0, eps), u.puddleTime, u.puddleBassTime, u.kickPulse, u.puddleTrebleSmooth, u.ripplePulses0, u.ripplePulses1);
 
         float2 normal = float2((h - hx) / eps, (h - hy) / eps);
         float2 lightDir = normalize(float2(0.4, 0.6));

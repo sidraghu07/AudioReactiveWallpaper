@@ -150,7 +150,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func makeNowPlayingWidgetWindow(for screen: NSScreen) -> NSWindow {
         let widgetSize = CGSize(width: 280, height: 72)
-        let origin = CGPoint(x: screen.frame.minX + 24, y: screen.frame.minY + 24)
+        let offset = Self.savedWidgetOffset(for: screen) ?? CGPoint(x: 24, y: 24)
+        let origin = CGPoint(x: screen.frame.minX + offset.x, y: screen.frame.minY + offset.y)
         let window = NSWindow(
             contentRect: CGRect(origin: origin, size: widgetSize),
             styleMask: [.borderless],
@@ -168,7 +169,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         widget.frame = CGRect(origin: .zero, size: widgetSize)
         window.contentView = widget
         widget.applyVisibility()
+
+        let screenOrigin = screen.frame.origin
+        let screenID = Self.displayID(for: screen)
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.didMoveNotification, object: window, queue: .main
+        ) { [weak window] _ in
+            Task { @MainActor in
+                guard let window, let screenID else { return }
+                let relativeOrigin = CGPoint(x: window.frame.minX - screenOrigin.x, y: window.frame.minY - screenOrigin.y)
+                Self.saveWidgetOffset(relativeOrigin, forDisplayID: screenID)
+            }
+        }
+
         return window
+    }
+
+    private static let widgetPositionDefaultsKey = "NowPlayingWidgetOffsets"
+
+    private static func displayID(for screen: NSScreen) -> String? {
+        guard let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else { return nil }
+        return number.stringValue
+    }
+
+    private static func savedWidgetOffset(for screen: NSScreen) -> CGPoint? {
+        guard let id = displayID(for: screen),
+              let stored = UserDefaults.standard.dictionary(forKey: widgetPositionDefaultsKey) as? [String: [String: Double]],
+              let offset = stored[id],
+              let x = offset["x"], let y = offset["y"] else { return nil }
+        return CGPoint(x: x, y: y)
+    }
+
+    private static func saveWidgetOffset(_ offset: CGPoint, forDisplayID id: String) {
+        var stored = (UserDefaults.standard.dictionary(forKey: widgetPositionDefaultsKey) as? [String: [String: Double]]) ?? [:]
+        stored[id] = ["x": offset.x, "y": offset.y]
+        UserDefaults.standard.set(stored, forKey: widgetPositionDefaultsKey)
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
