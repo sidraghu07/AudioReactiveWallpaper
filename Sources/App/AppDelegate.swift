@@ -75,6 +75,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil
         )
 
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(systemWillPowerOff),
+            name: NSWorkspace.willPowerOffNotification,
+            object: nil
+        )
+
         nowPlaying = NowPlayingMonitor()
         nowPlaying.onUpdate = { title, artist, artworkData in
             guard let artworkData else { return }
@@ -169,6 +176,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func systemDidWake() {
         restartCapture()
         nowPlaying.refresh()
+    }
+
+    @objc private func systemWillPowerOff() {
+        captureRetryTimer?.invalidate()
+        captureRetryTimer = nil
+        isCapturing = false
+        Task {
+            await capture.stop()
+        }
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard isCapturing else { return .terminateNow }
+        isCapturing = false
+        Task { @MainActor in
+            await capture.stop()
+            NSApp.reply(toApplicationShouldTerminate: true)
+        }
+        return .terminateLater
     }
 
     private func restartCapture() {
