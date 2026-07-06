@@ -62,7 +62,7 @@ echo "Code signing (stable local identity)..."
 signed=0
 for attempt in 1 2 3 4 5; do
     xattr -cr "$APP_BUNDLE"
-    if codesign --force --sign "AudioReactiveWallpaperCert" "$APP_BUNDLE"; then
+    if codesign --force --sign "SoundPaperCert" "$APP_BUNDLE"; then
         signed=1
         break
     fi

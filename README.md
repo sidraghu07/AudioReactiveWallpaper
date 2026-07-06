@@ -43,4 +43,4 @@ swift build                 # local debug build
 ./make_dmg.sh               # package the release build into docs/SoundPaper.dmg
 ```
 
-`build_app.sh` code-signs with a local self-signed identity (`AudioReactiveWallpaperCert`) for local development. Distributing to other people relies on the Gatekeeper bypass above rather than Apple notarization.
+`build_app.sh` code-signs with a local self-signed identity (`SoundPaperCert`) for local development. Distributing to other people relies on the Gatekeeper bypass above rather than Apple notarization.
