@@ -5,11 +5,18 @@ APP_NAME="AudioReactiveWallpaper"
 BUILD_CONFIG="${1:-debug}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BUILD_DIR="$SCRIPT_DIR/.build/arm64-apple-macosx/$BUILD_CONFIG"
 APP_BUNDLE="$SCRIPT_DIR/$APP_NAME.app"
 
-echo "Building ($BUILD_CONFIG)..."
-swift build -c "$BUILD_CONFIG" --package-path "$SCRIPT_DIR"
+if [ "$BUILD_CONFIG" = "release" ]; then
+    # Universal binary (Apple Silicon + Intel) for distribution.
+    BUILD_DIR="$SCRIPT_DIR/.build/apple/Products/Release"
+    echo "Building (release, universal arm64 + x86_64)..."
+    swift build -c release --arch arm64 --arch x86_64 --package-path "$SCRIPT_DIR"
+else
+    BUILD_DIR="$SCRIPT_DIR/.build/arm64-apple-macosx/$BUILD_CONFIG"
+    echo "Building ($BUILD_CONFIG)..."
+    swift build -c "$BUILD_CONFIG" --package-path "$SCRIPT_DIR"
+fi
 
 echo "Assembling $APP_NAME.app..."
 rm -rf "$APP_BUNDLE"
@@ -18,7 +25,11 @@ mkdir -p "$APP_BUNDLE/Contents/Resources"
 
 cp "$BUILD_DIR/$APP_NAME" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 
-cp "$BUILD_DIR/${APP_NAME}_${APP_NAME}.bundle/"* "$APP_BUNDLE/Contents/Resources/"
+RESOURCE_BUNDLE="$BUILD_DIR/${APP_NAME}_${APP_NAME}.bundle"
+if [ -d "$RESOURCE_BUNDLE/Contents/Resources" ]; then
+    RESOURCE_BUNDLE="$RESOURCE_BUNDLE/Contents/Resources"
+fi
+cp "$RESOURCE_BUNDLE/"* "$APP_BUNDLE/Contents/Resources/"
 
 cat > "$APP_BUNDLE/Contents/Info.plist" << PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -31,12 +42,16 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << PLIST
     <string>com.siddharth.audioreactivewallpaper</string>
     <key>CFBundleName</key>
     <string>$APP_NAME</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
     <string>1.0</string>
     <key>CFBundleVersion</key>
     <string>1</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
     <key>NSHighResolutionCapable</key>
     <true/>
 </dict>

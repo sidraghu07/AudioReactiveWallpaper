@@ -4,11 +4,11 @@ import PackageDescription
 let package = Package(
     name: "AudioReactiveWallpaper",
     platforms: [
-        .macOS(.v14)
+        .macOS(.v13)
     ],
     targets: [
         .executableTarget(
             name: "AudioReactiveWallpaper",
-            resources: [.process("Shaders.metal"), .copy("app.jpg")]),
+            resources: [.copy("Shaders.metal"), .copy("AppIcon.icns")]),
     ]
 )

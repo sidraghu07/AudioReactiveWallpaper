@@ -63,13 +63,18 @@ final class WallpaperRenderer: NSObject, MTKViewDelegate {
     init(device: MTLDevice) {
         self.commandQueue = device.makeCommandQueue()!
 
-        guard let shaderURL = ResourceLoader.url(forResource: "Shaders", withExtension: "metal"),
-              let shaderSource = try? String(contentsOf: shaderURL, encoding: .utf8) else {
-            fatalError("Could not locate Shaders.metal")
+        let library: MTLLibrary
+        if let precompiled = try? device.makeDefaultLibrary(bundle: Bundle.main) {
+            library = precompiled
+        } else if let shaderURL = ResourceLoader.url(forResource: "Shaders", withExtension: "metal"),
+                  let shaderSource = try? String(contentsOf: shaderURL, encoding: .utf8),
+                  let sourceLibrary = try? device.makeLibrary(source: shaderSource, options: nil) {
+            library = sourceLibrary
+        } else {
+            fatalError("Could not load Metal shader library")
         }
 
-        guard let library = try? device.makeLibrary(source: shaderSource, options: nil),
-              let vertexFunction = library.makeFunction(name: "vertexMain"),
+        guard let vertexFunction = library.makeFunction(name: "vertexMain"),
               let fragmentFunction = library.makeFunction(name: "fragmentMain") else {
             fatalError("Could not compile Metal shaders")
         }

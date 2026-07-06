@@ -15,11 +15,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var widgetWindows: [NSWindow] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        if let iconURL = ResourceLoader.url(forResource: "app", withExtension: "jpg"),
-           let icon = NSImage(contentsOf: iconURL) {
-            NSApplication.shared.applicationIconImage = icon
-        }
-
         rebuildWindows()
         controlsWindow = ControlsWindow()
         controlsWindow.show()
