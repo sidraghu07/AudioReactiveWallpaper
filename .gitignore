@@ -1,6 +1,7 @@
 .DS_Store
 /.build
-AudioReactiveWallpaper.app/
+*.app/
+.dmg-staging/
 /Packages
 xcuserdata/
 DerivedData/

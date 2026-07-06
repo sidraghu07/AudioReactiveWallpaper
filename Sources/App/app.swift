@@ -1,7 +1,7 @@
 import AppKit
 
 @main
-struct AudioReactiveWallpaper {
+struct SoundPaper {
     static func main() async throws {
         let delegate = AppDelegate()
         let app = NSApplication.shared

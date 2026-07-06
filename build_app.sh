@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-APP_NAME="AudioReactiveWallpaper"
+APP_NAME="SoundPaper"
 BUILD_CONFIG="${1:-debug}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -39,7 +39,7 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << PLIST
     <key>CFBundleExecutable</key>
     <string>$APP_NAME</string>
     <key>CFBundleIdentifier</key>
-    <string>com.siddharth.audioreactivewallpaper</string>
+    <string>com.siddharth.soundpaper</string>
     <key>CFBundleName</key>
     <string>$APP_NAME</string>
     <key>CFBundleIconFile</key>

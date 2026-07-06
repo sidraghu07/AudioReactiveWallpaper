@@ -1,10 +1,10 @@
 #!/bin/bash
 set -e
 
-APP_NAME="AudioReactiveWallpaper"
+APP_NAME="SoundPaper"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_BUNDLE="$SCRIPT_DIR/$APP_NAME.app"
-DMG_PATH="$SCRIPT_DIR/$APP_NAME.dmg"
+DMG_PATH="$SCRIPT_DIR/docs/$APP_NAME.dmg"
 STAGING_DIR="$SCRIPT_DIR/.dmg-staging"
 
 if [ ! -d "$APP_BUNDLE" ]; then

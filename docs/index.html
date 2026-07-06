@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SoundPaper</title>
+<style>
+    :root {
+        --bg: #05050a;
+        --panel: #0f0f18;
+        --border: #24243a;
+        --pink: #ff2e9a;
+        --blue: #2ea0ff;
+        --text: #e8e8f0;
+        --muted: #8d8da3;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Helvetica, Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+    }
+    main {
+        width: 100%;
+        max-width: 720px;
+        padding: 64px 24px 96px;
+    }
+    .hero {
+        text-align: center;
+        margin-bottom: 48px;
+    }
+    .hero img {
+        width: 128px;
+        height: 128px;
+        border-radius: 28px;
+        box-shadow: 0 20px 60px rgba(255, 46, 154, 0.25), 0 20px 60px rgba(46, 160, 255, 0.15);
+        margin-bottom: 24px;
+    }
+    h1 {
+        font-size: 32px;
+        margin: 0 0 8px;
+        background: linear-gradient(90deg, var(--pink), var(--blue));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+    }
+    .tagline {
+        color: var(--muted);
+        font-size: 17px;
+        margin: 0 0 32px;
+    }
+    .download-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        background: linear-gradient(90deg, var(--pink), var(--blue));
+        color: #fff;
+        font-weight: 600;
+        font-size: 16px;
+        text-decoration: none;
+        padding: 14px 28px;
+        border-radius: 12px;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .download-button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 24px rgba(255, 46, 154, 0.3);
+    }
+    .meta {
+        color: var(--muted);
+        font-size: 13px;
+        margin-top: 12px;
+    }
+    section {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 28px 32px;
+        margin-bottom: 20px;
+    }
+    h2 {
+        font-size: 18px;
+        margin-top: 0;
+    }
+    ol, ul {
+        color: var(--text);
+        line-height: 1.7;
+        padding-left: 20px;
+    }
+    ol li, ul li {
+        margin-bottom: 8px;
+    }
+    code {
+        background: #1a1a28;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 2px 6px;
+        font-size: 13px;
+    }
+    .muted { color: var(--muted); }
+    footer {
+        text-align: center;
+        color: var(--muted);
+        font-size: 13px;
+        margin-top: 40px;
+    }
+    footer a { color: var(--blue); }
+</style>
+</head>
+<body>
+<main>
+    <div class="hero">
+        <img src="icon.png" alt="SoundPaper icon">
+        <h1>SoundPaper</h1>
+        <p class="tagline">A live, audio-reactive desktop wallpaper for macOS.<br>Puddles, oceans, nebulae, and a black hole that all move to your music.</p>
+        <a class="download-button" href="SoundPaper.dmg" download>
+            &#8681; Download for macOS
+        </a>
+        <p class="meta">Requires macOS 13 (Ventura) or later &middot; Apple Silicon &amp; Intel</p>
+    </div>
+
+    <section>
+        <h2>Installation</h2>
+        <ol>
+            <li>Open the downloaded <code>SoundPaper.dmg</code>.</li>
+            <li>Drag <strong>SoundPaper</strong> into the <strong>Applications</strong> shortcut in the same window.</li>
+            <li>Open it from Applications (see below &mdash; macOS will warn you first since this isn't a notarized App Store app).</li>
+            <li>When prompted, grant <strong>Screen Recording</strong> permission in System Settings &rarr; Privacy &amp; Security. This is what lets the app listen to your music; relaunch the app afterward.</li>
+            <li>Open the app's menu bar controls to pick your audio source (Spotify or Apple Music) and a visual style.</li>
+        </ol>
+    </section>
+
+    <section>
+        <h2>macOS blocks it the first time &mdash; here's how to open it anyway</h2>
+        <p class="muted">This app is signed but not notarized through Apple, so Gatekeeper flags it as coming from an unidentified developer. This is expected and safe to bypass.</p>
+        <p><strong>macOS Sonoma / Sequoia (14 &amp; 15):</strong></p>
+        <ul>
+            <li>Try to open the app once (it will be blocked).</li>
+            <li>Go to <strong>System Settings &rarr; Privacy &amp; Security</strong>, scroll down to the security message about SoundPaper, and click <strong>Open Anyway</strong>.</li>
+            <li>Confirm one more time when it relaunches.</li>
+        </ul>
+        <p><strong>macOS Ventura and earlier:</strong></p>
+        <ul>
+            <li>Right-click (or Control-click) the app and choose <strong>Open</strong>.</li>
+            <li>Click <strong>Open</strong> in the dialog that appears.</li>
+        </ul>
+    </section>
+
+    <footer>
+        Source on <a href="https://github.com/sidraghu07/SoundPaper">GitHub</a>
+    </footer>
+</main>
+</body>
+</html>
