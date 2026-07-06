@@ -39,6 +39,8 @@ struct Uniforms {
     float puddleTrebleSmooth;
     float puddleMidSmooth;
     float spaceKickSmooth;
+    float blackHoleRotation;
+    float blackHoleFlow;
     float4 ripplePulses0;
     float4 ripplePulses1;
     float4 color0;
@@ -280,7 +282,7 @@ fragment float4 fragmentMain(VertexOut in [[stage_in]],
         float vocalSparkle = vocalSparkleField(p * 4.0 + float2(53.0, 17.0), 24.0, u.time * 2.2, trebleN);
         vocalSparkle += vocalSparkleField(p * 5.5 + float2(19.0, 83.0), 24.0, u.time * 2.8, trebleN) * 0.8;
         color += float3(1.0) * vocalSparkle * trebleN * 3.2;
-    } else {
+    } else if (u.atmosphereMode < 3.5) {
         float eps = 0.01;
         float h = oceanHeight(p, u.oceanTime, bassN, midN, trebleN);
         float hx = oceanHeight(p + float2(eps, 0.0), u.oceanTime, bassN, midN, trebleN);
@@ -304,6 +306,59 @@ fragment float4 fragmentMain(VertexOut in [[stage_in]],
 
         color += oceanColor * (0.4 + 0.3 * (h * 0.5 + 0.5));
         color += float3(1.0) * foam * 0.8;
+    } else {
+        float dist = length(p);
+        float angle = atan2(p.y, p.x);
+
+        float stars = starField(p * 2.0, 20.0, u.time);
+        color += float3(1.0) * stars * 0.12;
+
+        float horizonRadius = 0.15 + u.spaceKickSmooth * 0.02;
+        float ringRadius = horizonRadius + 0.06 + u.puddleTrebleSmooth * 0.05;
+        float ringThickness = 0.028 + u.puddleMidSmooth * 0.018;
+
+        float spiralTwist = 1.3 + u.puddleMidSmooth * 1.6 + bassN * 0.6;
+        float warpedAngle = angle + spiralTwist / (dist + 0.1) + u.blackHoleRotation;
+
+        float flowT = u.blackHoleFlow;
+        float turbBass = sin(warpedAngle * 5.0 + dist * 9.0 - flowT * 2.0) * 0.5 + 0.5;
+        float turbMelody = sin(warpedAngle * 9.0 - dist * 13.0 + flowT * 1.5) * 0.5 + 0.5;
+        float turbVocal = sin(warpedAngle * 17.0 + dist * 21.0 - flowT * 2.6) * 0.5 + 0.5;
+        float turb = (turbBass + turbMelody * 0.65 + turbVocal * 0.4 * (0.4 + u.puddleTrebleSmooth * 1.3)) / 2.05;
+
+        float inner = smoothstep(horizonRadius, horizonRadius + 0.035, dist);
+        float outer = exp(-max(dist - ringRadius, 0.0) * (2.4 - bassN * 1.1));
+        float diskEnvelope = inner * outer;
+
+        float density = diskEnvelope * (0.25 + turb * (0.9 + bassN * 0.6));
+        float ringHot = exp(-pow((dist - ringRadius) / ringThickness, 2.0)) * inner;
+
+        float3 bassColor = paletteGradient(fract(0.05 + hueShift), u);
+        float3 melodyColor = paletteGradient(fract(0.45 + hueShift), u);
+        float3 vocalColor = paletteGradient(fract(0.78 + hueShift), u);
+
+        float bassWeight = turbBass * (0.4 + bassN * 1.4);
+        float melodyWeight = turbMelody * (0.3 + u.puddleMidSmooth * 1.6);
+        float vocalWeight = turbVocal * (0.3 + u.puddleTrebleSmooth * 1.7);
+        float totalWeight = max(bassWeight + melodyWeight + vocalWeight, 0.0001);
+        float3 swirlColor = (bassColor * bassWeight + melodyColor * melodyWeight + vocalColor * vocalWeight) / totalWeight;
+
+        float heat = clamp(density * 1.3 + ringHot * 1.6 + u.beatPulse * 0.5, 0.0, 1.6);
+        float3 diskColor = mix(swirlColor * 0.6, float3(1.0), clamp(heat - 0.55, 0.0, 1.0));
+
+        float3 beatColor = mix(paletteGradient(fract(0.95 + hueShift), u), float3(1.0), 0.6);
+
+        color += diskColor * (density * 2.4 + ringHot * 3.2);
+        color += beatColor * ringHot * u.beatPulse * 1.3;
+
+        float horizonMask = smoothstep(horizonRadius + 0.01, horizonRadius - 0.01, dist);
+        color *= (1.0 - horizonMask);
+
+        float edgeDist = max(abs(p.x), abs(p.y));
+        float borderMask = smoothstep(0.72, 1.0, edgeDist);
+        float borderPulse = sin(angle * 8.0 + u.time * 2.4 + u.puddleTrebleSmooth * 3.0) * 0.5 + 0.5;
+        float3 borderColor = paletteGradient(fract(angle / (2.0 * M_PI_F) + hueShift + 0.5), u);
+        color += borderColor * borderMask * (0.2 + u.puddleTrebleSmooth * 2.6 + u.puddleMidSmooth * 1.4) * (0.4 + borderPulse * 0.6);
     }
 
     float peak = max(color.r, max(color.g, color.b));

@@ -20,11 +20,12 @@ final class ControlsWindow: NSObject {
         Preset(name: "Trippy (All Effects)", kaleidoscope: true, echoTrails: true, chromaticAberration: true, hueCycling: true)
     ]
 
-    private let atmospheres: [String] = ["Waveform", "Puddle", "Space", "Ocean"]
+    private let atmospheres: [String] = ["Waveform", "Puddle", "Space", "Ocean", "Black Hole"]
+    private let audioSources = AudioSource.allCases
 
     override init() {
         window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 280, height: 480),
+            contentRect: NSRect(x: 0, y: 0, width: 280, height: 560),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -34,6 +35,21 @@ final class ControlsWindow: NSObject {
         window.center()
 
         super.init()
+
+        let sourceLabel = NSTextField(labelWithString: "Audio Source")
+        sourceLabel.font = .boldSystemFont(ofSize: 12)
+
+        var sourceButtons: [NSButton] = []
+        for (index, source) in audioSources.enumerated() {
+            let button = NSButton(radioButtonWithTitle: source.displayName, target: self, action: #selector(audioSourceSelected(_:)))
+            button.tag = index
+            button.state = (VisualEffectsSettings.shared.audioSource == source) ? .on : .off
+            sourceButtons.append(button)
+        }
+        let sourceStack = NSStackView(views: sourceButtons)
+        sourceStack.orientation = .vertical
+        sourceStack.alignment = .leading
+        sourceStack.spacing = 6
 
         let atmosphereLabel = NSTextField(labelWithString: "Atmosphere")
         atmosphereLabel.font = .boldSystemFont(ofSize: 12)
@@ -84,7 +100,7 @@ final class ControlsWindow: NSObject {
         )
         nowPlayingCheckbox.state = VisualEffectsSettings.shared.showNowPlayingWidget ? .on : .off
 
-        let outerStack = NSStackView(views: [atmosphereLabel, atmosphereStack, effectsLabel, effectsStack, widgetLabel, nowPlayingCheckbox])
+        let outerStack = NSStackView(views: [sourceLabel, sourceStack, atmosphereLabel, atmosphereStack, effectsLabel, effectsStack, widgetLabel, nowPlayingCheckbox])
         outerStack.orientation = .vertical
         outerStack.alignment = .leading
         outerStack.spacing = 14
@@ -105,6 +121,10 @@ final class ControlsWindow: NSObject {
     func show() {
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @objc private func audioSourceSelected(_ sender: NSButton) {
+        VisualEffectsSettings.shared.audioSource = audioSources[sender.tag]
     }
 
     @objc private func atmosphereSelected(_ sender: NSButton) {

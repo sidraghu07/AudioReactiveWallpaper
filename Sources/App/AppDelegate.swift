@@ -36,6 +36,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             AudioLevels.shared.update(bass: bass, mid: mid, treble: treble)
         }
         capture = SystemAudioCapture(consumer: fft)
+        capture.onStreamStopped = { [weak self] in
+            Task { @MainActor in
+                self?.restartCapture()
+            }
+        }
 
         startCaptureIfPossible()
         startCaptureRetryTimer()
@@ -44,6 +49,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self,
             selector: #selector(applicationDidLaunch(_:)),
             name: NSWorkspace.didLaunchApplicationNotification,
+            object: nil
+        )
+
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(applicationDidTerminate(_:)),
+            name: NSWorkspace.didTerminateApplicationNotification,
+            object: nil
+        )
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(audioSourceChanged),
+            name: VisualEffectsSettings.audioSourceChanged,
             object: nil
         )
 
@@ -111,8 +130,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard !isCapturing,
               let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
               let bundleID = app.bundleIdentifier,
-              SystemAudioCapture.musicBundleIDs.contains(bundleID) else { return }
+              bundleID == VisualEffectsSettings.shared.audioSource.bundleID else { return }
         startCaptureIfPossible()
+    }
+
+    @objc private func applicationDidTerminate(_ notification: Notification) {
+        guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+              let bundleID = app.bundleIdentifier,
+              bundleID == VisualEffectsSettings.shared.audioSource.bundleID else { return }
+        restartCapture()
+    }
+
+    @objc private func audioSourceChanged() {
+        restartCapture()
+    }
+
+    private func restartCapture() {
+        isCapturing = false
+        startCaptureRetryTimer()
+        Task {
+            await capture.stop()
+            startCaptureIfPossible()
+        }
     }
 
     @objc private func rebuildWindows() {

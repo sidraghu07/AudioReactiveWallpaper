@@ -22,6 +22,8 @@ struct WallpaperUniforms {
     var puddleTrebleSmooth: Float
     var puddleMidSmooth: Float
     var spaceKickSmooth: Float
+    var blackHoleRotation: Float
+    var blackHoleFlow: Float
     var ripplePulses0: SIMD4<Float>
     var ripplePulses1: SIMD4<Float>
     var color0: SIMD4<Float>
@@ -44,6 +46,8 @@ final class WallpaperRenderer: NSObject, MTKViewDelegate {
     private var puddleBassTime: Float = 0
     private var oceanTime: Float = 0
     private var spaceTime: Float = 0
+    private var blackHoleRotation: Float = 0
+    private var blackHoleFlow: Float = 0
     private var lastFrameTimestamp = CACurrentMediaTime()
 
     private var puddleMidSmooth: Float = 0
@@ -92,6 +96,7 @@ final class WallpaperRenderer: NSObject, MTKViewDelegate {
         lastFrameTimestamp = now
 
         let levels = AudioLevels.shared.getLevels()
+        let bassN = min(1, max(0, levels.bass / 3000))
         let midN = min(1, max(0, levels.mid / 40))
         let trebleN = min(1, max(0, levels.treble / 2))
 
@@ -117,6 +122,8 @@ final class WallpaperRenderer: NSObject, MTKViewDelegate {
         puddleBassTime += deltaTime * (0.15 + kickPulse * 0.6)
         oceanTime += deltaTime * (0.2 + oceanVocalSmooth * 0.5 + kickPulse * 0.3)
         spaceTime += deltaTime * (0.02 + midN * 0.03)
+        blackHoleRotation += deltaTime * (0.1 + puddleMidSmooth * 0.22)
+        blackHoleFlow += deltaTime * (0.7 + bassN * 1.1)
 
         let palette = CoverColors.shared.getColors()
         let targetColors = (0..<paletteSlotCount).map { i -> SIMD3<Float> in
@@ -162,6 +169,8 @@ final class WallpaperRenderer: NSObject, MTKViewDelegate {
             puddleTrebleSmooth: puddleTrebleSmooth,
             puddleMidSmooth: puddleMidSmooth,
             spaceKickSmooth: spaceKickSmooth,
+            blackHoleRotation: blackHoleRotation,
+            blackHoleFlow: blackHoleFlow,
             ripplePulses0: ripplePulses0,
             ripplePulses1: ripplePulses1,
             color0: paddedColors[0],

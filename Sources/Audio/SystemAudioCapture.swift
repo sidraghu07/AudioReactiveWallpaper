@@ -8,11 +8,10 @@ protocol AudioSampleConsumer {
 }
 
 final class SystemAudioCapture: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sendable {
-    static let musicBundleIDs: Set<String> = ["com.spotify.client", "com.apple.Music"]
-
     private var stream: SCStream?
     private let consumer: AudioSampleConsumer
     private let sampleRate: Int
+    var onStreamStopped: (() -> Void)?
 
     init(consumer: AudioSampleConsumer, sampleRate: Int = 44100) {
         self.consumer = consumer
@@ -28,12 +27,12 @@ final class SystemAudioCapture: NSObject, SCStreamOutput, SCStreamDelegate, @unc
             throw CaptureError.noDisplay
         }
 
-        let musicApps = content.applications.filter { Self.musicBundleIDs.contains($0.bundleIdentifier) }
-        guard !musicApps.isEmpty else {
+        let targetBundleID = VisualEffectsSettings.shared.audioSource.bundleID
+        guard let targetApp = content.applications.first(where: { $0.bundleIdentifier == targetBundleID }) else {
             throw CaptureError.noMusicAppRunning
         }
 
-        let filter = SCContentFilter(display: display, including: musicApps, exceptingWindows: [])
+        let filter = SCContentFilter(display: display, including: [targetApp], exceptingWindows: [])
         let config = SCStreamConfiguration()
         config.capturesAudio = true
         config.excludesCurrentProcessAudio = true
@@ -46,7 +45,13 @@ final class SystemAudioCapture: NSObject, SCStreamOutput, SCStreamDelegate, @unc
         let stream = SCStream(filter: filter, configuration: config, delegate: self)
         try stream.addStreamOutput(self, type: .audio, sampleHandlerQueue: DispatchQueue(label: "audio.capture.queue"))
         try await stream.startCapture()
-        self.stream = stream    
+        self.stream = stream
+    }
+
+    func stop() async {
+        guard let stream else { return }
+        self.stream = nil
+        try? await stream.stopCapture()
     }
 
     func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
@@ -57,6 +62,8 @@ final class SystemAudioCapture: NSObject, SCStreamOutput, SCStreamDelegate, @unc
 
     func stream(_ stream: SCStream, didStopWithError error: Error) {
         print("Stream stopped with error: \(error)")
+        self.stream = nil
+        onStreamStopped?()
     }
 
     private static func extractSamples(from sampleBuffer: CMSampleBuffer) -> [Float]? {
