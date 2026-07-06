@@ -3,155 +3,511 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SoundPaper</title>
+<title>SoundPaper — a desktop wallpaper that listens</title>
+<meta name="description" content="SoundPaper turns whatever's playing in Spotify or Apple Music into a live desktop wallpaper — five generative scenes that react to bass, melody, vocals, and beat.">
+<link rel="icon" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
     :root {
-        --bg: #05050a;
-        --panel: #0f0f18;
-        --border: #24243a;
-        --pink: #ff2e9a;
-        --blue: #2ea0ff;
-        --text: #e8e8f0;
-        --muted: #8d8da3;
+        --paper: #f2ece0;
+        --paper-raised: #e8ddc7;
+        --ink: #1c1811;
+        --ink-soft: #6b6252;
+        --line: #d2c4a3;
+        --accent: #a94a26;
+        --accent-ink: #f6ede0;
     }
+
     * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
     body {
         margin: 0;
-        background: var(--bg);
-        color: var(--text);
-        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Helvetica, Arial, sans-serif;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: "IBM Plex Sans", -apple-system, sans-serif;
+        font-size: 16px;
+        line-height: 1.6;
+    }
+
+    h1, h2, h3 {
+        font-family: "Space Grotesk", "IBM Plex Sans", sans-serif;
+        font-weight: 600;
+        line-height: 1.05;
+        margin: 0;
+    }
+
+    a { color: var(--ink); }
+
+    .wrap {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 0 32px;
+    }
+
+    /* ---------- header ---------- */
+
+    header.site {
+        border-bottom: 1px solid var(--line);
+    }
+
+    header.site .wrap {
         display: flex;
-        justify-content: center;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 22px;
+        padding-bottom: 22px;
     }
-    main {
-        width: 100%;
-        max-width: 720px;
-        padding: 64px 24px 96px;
+
+    .wordmark {
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 700;
+        font-size: 19px;
+        letter-spacing: -0.01em;
     }
+
+    .site-nav a {
+        text-decoration: none;
+        font-size: 14px;
+        color: var(--ink-soft);
+        border-bottom: 1px solid transparent;
+        padding-bottom: 2px;
+    }
+
+    .site-nav a:hover { border-bottom-color: var(--ink-soft); }
+
+    /* ---------- hero ---------- */
+
     .hero {
-        text-align: center;
-        margin-bottom: 48px;
+        padding: 88px 0 96px;
     }
-    .hero img {
-        width: 128px;
-        height: 128px;
-        border-radius: 28px;
-        box-shadow: 0 20px 60px rgba(255, 46, 154, 0.25), 0 20px 60px rgba(46, 160, 255, 0.15);
-        margin-bottom: 24px;
+
+    .hero .wrap {
+        display: grid;
+        grid-template-columns: 1.35fr 1fr;
+        gap: 64px;
+        align-items: center;
     }
-    h1 {
-        font-size: 32px;
-        margin: 0 0 8px;
-        background: linear-gradient(90deg, var(--pink), var(--blue));
-        -webkit-background-clip: text;
-        background-clip: text;
-        color: transparent;
+
+    .eyebrow {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin: 0 0 20px;
     }
-    .tagline {
-        color: var(--muted);
-        font-size: 17px;
-        margin: 0 0 32px;
+
+    .hero h1 {
+        font-size: 52px;
+        letter-spacing: -0.02em;
+        max-width: 15ch;
     }
-    .download-button {
+
+    .hero p.lede {
+        font-size: 18px;
+        color: var(--ink-soft);
+        max-width: 46ch;
+        margin: 28px 0 36px;
+    }
+
+    .cta-row {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .btn-download {
         display: inline-flex;
         align-items: center;
         gap: 10px;
-        background: linear-gradient(90deg, var(--pink), var(--blue));
-        color: #fff;
-        font-weight: 600;
-        font-size: 16px;
+        background: var(--ink);
+        color: var(--paper);
         text-decoration: none;
-        padding: 14px 28px;
-        border-radius: 12px;
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 600;
+        font-size: 15px;
+        padding: 15px 26px;
+        border-radius: 4px;
+        transition: transform 0.12s ease;
     }
-    .download-button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 8px 24px rgba(255, 46, 154, 0.3);
-    }
-    .meta {
-        color: var(--muted);
+
+    .btn-download:hover { transform: translateY(-1px); }
+
+    .req-line {
         font-size: 13px;
-        margin-top: 12px;
+        color: var(--ink-soft);
     }
-    section {
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        padding: 28px 32px;
-        margin-bottom: 20px;
+
+    .hero-frame {
+        position: relative;
     }
-    h2 {
-        font-size: 18px;
-        margin-top: 0;
+
+    .hero-frame .card {
+        background: var(--paper-raised);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 20px;
+        transform: rotate(2deg);
+        box-shadow: 14px 18px 0 rgba(28, 24, 17, 0.06);
     }
-    ol, ul {
-        color: var(--text);
-        line-height: 1.7;
-        padding-left: 20px;
+
+    .hero-frame img {
+        display: block;
+        width: 100%;
+        height: auto;
+        border-radius: 4px;
     }
-    ol li, ul li {
+
+    /* ---------- atmospheres ---------- */
+
+    .atmospheres {
+        border-top: 1px solid var(--line);
+        padding: 88px 0;
+    }
+
+    .section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 32px;
+        margin-bottom: 56px;
+    }
+
+    .section-head h2 {
+        font-size: 34px;
+        letter-spacing: -0.01em;
+        max-width: 18ch;
+    }
+
+    .section-head p {
+        font-size: 15px;
+        color: var(--ink-soft);
+        max-width: 32ch;
+        margin: 0;
+    }
+
+    .atmosphere-row {
+        display: grid;
+        grid-template-columns: 90px 1fr 2fr;
+        gap: 32px;
+        align-items: baseline;
+        padding: 28px 0;
+        border-top: 1px solid var(--line);
+        opacity: 0;
+        transform: translateY(14px);
+        transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+
+    .atmosphere-row.visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .atmosphere-row:last-child {
+        border-bottom: 1px solid var(--line);
+    }
+
+    .atmosphere-index {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 14px;
+        color: var(--accent);
+    }
+
+    .atmosphere-name {
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 600;
+        font-size: 22px;
+    }
+
+    .atmosphere-desc {
+        font-size: 15px;
+        color: var(--ink-soft);
+        max-width: 56ch;
+    }
+
+    /* ---------- install ---------- */
+
+    .install {
+        border-top: 1px solid var(--line);
+        padding: 88px 0;
+    }
+
+    .install-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 64px;
+    }
+
+    .steps {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        counter-reset: step;
+    }
+
+    .steps li {
+        counter-increment: step;
+        position: relative;
+        padding-left: 44px;
+        margin-bottom: 26px;
+        font-size: 15px;
+    }
+
+    .steps li::before {
+        content: counter(step);
+        position: absolute;
+        left: 0;
+        top: -2px;
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 600;
+        font-size: 15px;
+        color: var(--accent-ink);
+        background: var(--accent);
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .steps code, .install code {
+        background: var(--paper-raised);
+        border: 1px solid var(--line);
+        border-radius: 3px;
+        padding: 1px 6px;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 13px;
+    }
+
+    .gatekeeper h3 {
+        font-size: 17px;
+        margin-bottom: 10px;
+    }
+
+    .gatekeeper p.note {
+        font-size: 14px;
+        color: var(--ink-soft);
+        margin: 0 0 20px;
+    }
+
+    .gatekeeper .os-block {
+        margin-bottom: 22px;
+    }
+
+    .gatekeeper .os-label {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--accent);
+        display: block;
         margin-bottom: 8px;
     }
-    code {
-        background: #1a1a28;
-        border: 1px solid var(--border);
-        border-radius: 4px;
-        padding: 2px 6px;
-        font-size: 13px;
+
+    .gatekeeper ul {
+        margin: 0;
+        padding-left: 18px;
+        font-size: 14px;
+        color: var(--ink-soft);
     }
-    .muted { color: var(--muted); }
-    footer {
-        text-align: center;
-        color: var(--muted);
-        font-size: 13px;
-        margin-top: 40px;
+
+    .gatekeeper li { margin-bottom: 6px; }
+
+    /* ---------- footer ---------- */
+
+    footer.site {
+        border-top: 1px solid var(--line);
+        padding: 28px 0;
     }
-    footer a { color: var(--blue); }
+
+    footer.site .wrap {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13px;
+        color: var(--ink-soft);
+    }
+
+    footer.site a { color: var(--ink-soft); }
+
+    /* ---------- responsive ---------- */
+
+    @media (max-width: 1024px) {
+        .hero h1 { font-size: 44px; }
+    }
+
+    @media (max-width: 768px) {
+        .wrap { padding: 0 20px; }
+
+        .hero { padding: 56px 0 64px; }
+        .hero .wrap {
+            grid-template-columns: 1fr;
+            gap: 40px;
+        }
+        .hero h1 { font-size: 36px; max-width: none; }
+        .hero-frame { order: -1; max-width: 260px; }
+        .hero-frame .card { transform: rotate(1deg); }
+
+        .atmospheres, .install { padding: 56px 0; }
+        .section-head {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 36px;
+        }
+        .section-head h2 { font-size: 28px; }
+
+        .atmosphere-row {
+            grid-template-columns: 44px 1fr;
+            row-gap: 6px;
+        }
+        .atmosphere-desc { grid-column: 1 / -1; }
+
+        .install-grid {
+            grid-template-columns: 1fr;
+            gap: 48px;
+        }
+
+        footer.site .wrap {
+            flex-direction: column;
+            gap: 8px;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        html { scroll-behavior: auto; }
+        .atmosphere-row {
+            opacity: 1;
+            transform: none;
+            transition: none;
+        }
+    }
 </style>
 </head>
 <body>
-<main>
-    <div class="hero">
-        <img src="icon.png" alt="SoundPaper icon">
-        <h1>SoundPaper</h1>
-        <p class="tagline">A live, audio-reactive desktop wallpaper for macOS.<br>Puddles, oceans, nebulae, and a black hole that all move to your music.</p>
-        <a class="download-button" href="SoundPaper.dmg" download>
-            &#8681; Download for macOS
-        </a>
-        <p class="meta">Requires macOS 13 (Ventura) or later &middot; Apple Silicon &amp; Intel</p>
+
+<header class="site">
+    <div class="wrap">
+        <span class="wordmark">SoundPaper</span>
+        <nav class="site-nav">
+            <a href="https://github.com/sidraghu07/SoundPaper">Source on GitHub</a>
+        </nav>
     </div>
+</header>
 
-    <section>
-        <h2>Installation</h2>
-        <ol>
-            <li>Open the downloaded <code>SoundPaper.dmg</code>.</li>
-            <li>Drag <strong>SoundPaper</strong> into the <strong>Applications</strong> shortcut in the same window.</li>
-            <li>Open it from Applications (see below &mdash; macOS will warn you first since this isn't a notarized App Store app).</li>
-            <li>When prompted, grant <strong>Screen Recording</strong> permission in System Settings &rarr; Privacy &amp; Security. This is what lets the app listen to your music; relaunch the app afterward.</li>
-            <li>Open the app's menu bar controls to pick your audio source (Spotify or Apple Music) and a visual style.</li>
-        </ol>
-    </section>
+<section class="hero">
+    <div class="wrap">
+        <div>
+            <p class="eyebrow">macOS &middot; live wallpaper</p>
+            <h1>A desktop wallpaper that listens to whatever's playing.</h1>
+            <p class="lede">SoundPaper reads the system audio straight out of Spotify or Apple Music and turns it into one of five generative scenes</p>
+            <div class="cta-row">
+                <a class="btn-download" href="SoundPaper.dmg" download>Download for macOS</a>
+                <span class="req-line">macOS 13+ &middot; Apple Silicon &amp; Intel</span>
+            </div>
+        </div>
+        <div class="hero-frame">
+            <div class="card">
+                <img src="icon.png" alt="SoundPaper app icon: a neon waveform">
+            </div>
+        </div>
+    </div>
+</section>
 
-    <section>
-        <h2>macOS blocks it the first time &mdash; here's how to open it anyway</h2>
-        <p class="muted">This app is signed but not notarized through Apple, so Gatekeeper flags it as coming from an unidentified developer. This is expected and safe to bypass.</p>
-        <p><strong>macOS Sonoma / Sequoia (14 &amp; 15):</strong></p>
-        <ul>
-            <li>Try to open the app once (it will be blocked).</li>
-            <li>Go to <strong>System Settings &rarr; Privacy &amp; Security</strong>, scroll down to the security message about SoundPaper, and click <strong>Open Anyway</strong>.</li>
-            <li>Confirm one more time when it relaunches.</li>
-        </ul>
-        <p><strong>macOS Ventura and earlier:</strong></p>
-        <ul>
-            <li>Right-click (or Control-click) the app and choose <strong>Open</strong>.</li>
-            <li>Click <strong>Open</strong> in the dialog that appears.</li>
-        </ul>
-    </section>
+<section class="atmospheres">
+    <div class="wrap">
+        <div class="section-head">
+            <h2>Five ways it listens</h2>
+            <p>Each scene reads bass, melody, vocals, and beat differently &mdash; pick one from the menu bar, any time.</p>
+        </div>
 
-    <footer>
-        Source on <a href="https://github.com/sidraghu07/SoundPaper">GitHub</a>
-    </footer>
-</main>
+        <div class="atmosphere-row">
+            <span class="atmosphere-index">01</span>
+            <span class="atmosphere-name">Waveform</span>
+        </div>
+        <div class="atmosphere-row">
+            <span class="atmosphere-index">02</span>
+            <span class="atmosphere-name">Puddle</span>
+        </div>
+        <div class="atmosphere-row">
+            <span class="atmosphere-index">03</span>
+            <span class="atmosphere-name">Space</span>
+        </div>
+        <div class="atmosphere-row">
+            <span class="atmosphere-index">04</span>
+            <span class="atmosphere-name">Ocean</span>
+        </div>
+        <div class="atmosphere-row">
+            <span class="atmosphere-index">05</span>
+            <span class="atmosphere-name">Black Hole</span>
+        </div>
+    </div>
+</section>
+
+<section class="install">
+    <div class="wrap install-grid">
+        <div>
+            <h2 style="font-size: 26px; margin-bottom: 28px;">Installing it</h2>
+            <ol class="steps">
+                <li>Open the downloaded <code>SoundPaper.dmg</code> and drag <strong>SoundPaper</strong> onto the Applications shortcut in the same window.</li>
+                <li>Open it from Applications. macOS will block it the first time &mdash; see the note alongside for exactly how to get past that.</li>
+                <li>When prompted, grant <strong>Screen Recording</strong> permission in System Settings &rarr; Privacy &amp; Security. This is what lets SoundPaper hear your music</li>
+                <li>Quit and reopen SoundPaper once the permission is granted &mdash; it only takes effect on the next launch.</li>
+                <li>Use the menu bar controls to choose Spotify or Apple Music as the source, and pick a scene.</li>
+            </ol>
+        </div>
+        <div class="gatekeeper">
+            <h3>Why macOS blocks it first</h3>
+            <p class="note">SoundPaper is signed but not notarized through Apple, so Gatekeeper flags it as an unidentified developer. That's expected, and safe to bypass.</p>
+
+            <div class="os-block">
+                <span class="os-label">macOS Sonoma / Sequoia (14 &amp; 15)</span>
+                <ul>
+                    <li>Try opening it once</li>
+                    <li>Go to System Settings &rarr; Privacy &amp; Security, find the message about SoundPaper, and click <strong>Open Anyway</strong>.</li>
+                    <li>Confirm once more when it relaunches.</li>
+                </ul>
+            </div>
+
+            <div class="os-block">
+                <span class="os-label">macOS Ventura and earlier</span>
+                <ul>
+                    <li>Right-click (or Control-click) the app and choose <strong>Open</strong>.</li>
+                    <li>Click <strong>Open</strong> in the dialog that appears.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<footer class="site">
+    <div class="wrap">
+        <span>SoundPaper</span>
+        <a href="https://github.com/sidraghu07/SoundPaper">github.com/sidraghu07/SoundPaper</a>
+    </div>
+</footer>
+
+<script>
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
+        const rows = document.querySelectorAll('.atmosphere-row');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.2 });
+        rows.forEach((row) => observer.observe(row));
+    } else {
+        document.querySelectorAll('.atmosphere-row').forEach((row) => row.classList.add('visible'));
+    }
+</script>
+
 </body>
 </html>
