@@ -6,6 +6,7 @@ import MetalKit
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var windows: [NSWindow] = []
     private var renderers: [WallpaperRenderer] = []
+    private var metalViews: [MTKView] = []
     private var capture: SystemAudioCapture!
     private var isCapturing = false
     private let metalDevice = MTLCreateSystemDefaultDevice()!
@@ -165,6 +166,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func systemWillSleep() {
+        pauseRendering()
         captureRetryTimer?.invalidate()
         captureRetryTimer = nil
         isCapturing = false
@@ -174,11 +176,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func systemDidWake() {
+        resumeRendering()
         restartCapture()
         nowPlaying.refresh()
     }
 
     @objc private func systemWillPowerOff() {
+        pauseRendering()
         captureRetryTimer?.invalidate()
         captureRetryTimer = nil
         isCapturing = false
@@ -188,6 +192,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        pauseRendering()
         guard isCapturing else { return .terminateNow }
         isCapturing = false
         Task { @MainActor in
@@ -195,6 +200,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.reply(toApplicationShouldTerminate: true)
         }
         return .terminateLater
+    }
+
+    private func pauseRendering() {
+        metalViews.forEach { $0.isPaused = true }
+    }
+
+    private func resumeRendering() {
+        metalViews.forEach { $0.isPaused = false }
     }
 
     private func restartCapture() {
@@ -210,6 +223,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         windows.forEach { $0.close() }
         windows.removeAll()
         renderers.removeAll()
+        metalViews.removeAll()
         widgetWindows.forEach { $0.close() }
         widgetWindows.removeAll()
         windows = NSScreen.screens.map(makeWallpaperWindow)
@@ -233,6 +247,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let renderer = WallpaperRenderer(device: metalDevice)
         metalView.delegate = renderer
         renderers.append(renderer)
+        metalViews.append(metalView)
 
         window.contentView = metalView
         window.makeKeyAndOrderFront(nil)
